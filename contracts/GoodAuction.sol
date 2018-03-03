@@ -14,7 +14,20 @@ contract GoodAuction is AuctionInterface {
 		reassignment. Must return false on failure and 
 		allow people to retrieve their funds  */
 	function bid() payable external returns(bool) {
-		// YOUR CODE HERE
+
+        if (msg.value > highestBid) {
+            refunds[highestBidder] +=highestBid;
+            highestBidder = msg.sender;
+            highestBid = msg.value;
+            return true;
+        }
+        
+        else {
+        
+                refunds[msg.sender] = msg.value;
+                return false;
+             }
+        
 	}
 
 	/*  Implement withdraw function to complete new 
@@ -22,8 +35,16 @@ contract GoodAuction is AuctionInterface {
 	    return of owed funds and false on failure
 	    or no funds owed.  */
 	function withdrawRefund() external returns(bool) {
-		// YOUR CODE HERE
-	}
+        require(refunds[msg.sender] > 0);
+
+        if (!msg.sender.send(refunds[msg.sender])) {
+            return false;
+        }
+        else {
+            delete refunds[msg.sender];
+            return true;
+        }
+    }
 
 	/*  Allow users to check the amount they are owed
 		before calling withdrawRefund(). Function returns
@@ -37,14 +58,25 @@ contract GoodAuction is AuctionInterface {
 		and applying it to the reduceBid function 
 		you fill in below. */
 	modifier canReduce() {
-		_;
+        if (msg.sender == highestBidder && highestBid > 0) {
+            _;
+
+        }
 	}
 
 
 	/*  Rewrite reduceBid from BadAuction to fix
 		the security vulnerabilities. Should allow the
 		current highest bidder only to reduce their bid amount */
-	function reduceBid() external {}
+	function reduceBid() external canReduce() {
+        highestBid -=1;
+        if (highestBid >=0) {
+            highestBidder.send(1);
+        }
+        else {
+            revert();
+        }
+    }
 
 
 	/* 	Remember this fallback function
@@ -55,7 +87,10 @@ contract GoodAuction is AuctionInterface {
 		How do we send people their money back?  */
 
 	function () payable {
-		// YOUR CODE HERE
+		if(!msg.sender.send(msg.value)) {
+            refunds[msg.sender]+=msg.value;
+            revert();
+        }
 	}
 
 }
